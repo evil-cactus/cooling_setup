@@ -29,3 +29,5 @@ for i in range(0,250):
 test = pd.read_sql('SELECT * FROM measurement ORDER BY time ASC', conn)
 print(test)
 c.close()
+
+#did it change?
