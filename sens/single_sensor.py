@@ -57,12 +57,12 @@ for i in range(0,len(lst)):
         sens_type = lst[i][1]
 
 st.subheader('Graphical Monitoring Interface')
+st.warning('UTC-timestamp')
 graph = st.empty()#create the graph container
 if (len(type_sensor) != 0):
     #the monitoring loop
     doit = st.button('Do it again!')
     if doit:
-        now = int(datetime.datetime.now().timestamp())
         ax = plt.figure(figsize=(12,5), dpi=150)
         c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':sens_id})
         df = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
