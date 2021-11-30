@@ -177,17 +177,18 @@ if (len(type_sensor) != 0):
                 ax[t].plot(df['time'],df['value'], color=col[j], lw=0.8)
                 ax[t].scatter(df['time'], df['value'], color=col[j], lw=1.2,label=str(sens_name))
         for n in range(0,len(type_sensor)):
-            for label in ax[n].get_xticklabels(which='major'):
-                label.set(rotation=30, horizontalalignment='right')
+            #for label in ax[n].get_xticklabels(which='major'):
+            #    label.set(rotation=30, horizontalalignment='right')
             ax[n].grid(which='both',color='black')
             ax[n].set_facecolor('white')
             ax[n].set_title(str(type_sensor[n])+'-sensors')
             #ax[n].set_ylabel(str(type_sensor[n])+'-sensors')
-            ax[n].set_ylim(0,1)
+            #ax[n].set_ylim(0,1)
             ax[n].legend(loc='upper left')
-        plt.xlim(now-100,now+5)
+        plt.xlim(now-180,now+5)
         plt.tight_layout()
         graph.pyplot(fig)
         time.sleep(0.5)
+        plt.close()
 else:
     st.warning('You\'re missing sensors to be shown here. Maybe add some above.')
