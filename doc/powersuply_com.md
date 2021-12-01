@@ -5,3 +5,5 @@ ser.write("VSET:1.0\n".encode())
 ser.write("VSET:1\n".encode())
 ser.write("VSET:2\n".encode())
 ser.write("VSET:2.2\n".encode())
+
+
