@@ -23,8 +23,11 @@ def take_data_single():
     with serial.Serial('COM4', 9600, timeout=1) as ser:
         while (t_elapsed <= (t_start + t_max)):
             line = ser.readlines()
-            temp_data = float(line[2][10:-2])
-            hum_data = float(line[3][9:-2])
+            try:
+                temp_data = float(line[2][10:-2])
+                hum_data = float(line[3][9:-2])
+            except:
+                continue
             print(temp_data, hum_data)
             time_data_temp = datetime.datetime.timestamp(datetime.datetime.now())
             c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data_temp, 'value':temp_data, 'id':3})
@@ -57,8 +60,11 @@ def take_data_double():
         with serial.Serial('COM3', 9600, timeout=1) as ser: #copper
             line = ser.readlines()
             if (len(line) != 0):
-                temp_data = float(line[2][10:-2])
-                hum_data = float(line[3][9:-2])
+                try:
+                    temp_data = float(line[2][10:-2])
+                    hum_data = float(line[3][9:-2])
+                except:
+                    continue
                 print(temp_data, hum_data)
                 time_data_temp = datetime.datetime.timestamp(datetime.datetime.now())
                 c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data_temp, 'value':temp_data, 'id':3})
@@ -68,8 +74,11 @@ def take_data_double():
                 conn.commit()
             else:
                 time.sleep(0.25)
-                temp_data = float(line[2][10:-2])
-                hum_data = float(line[3][9:-2])
+                try:
+                    temp_data = float(line[2][10:-2])
+                    hum_data = float(line[3][9:-2])
+                except:
+                    continue
                 print(temp_data, hum_data)
                 time_data_temp = datetime.datetime.timestamp(datetime.datetime.now())
                 c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data_temp, 'value':temp_data, 'id':5})
@@ -81,8 +90,11 @@ def take_data_double():
         with serial.Serial('COM4', 9600, timeout=1) as ser: #outside
             line = ser.readlines()
             if (len(line) != 0):
-                temp_data = float(line[2][10:-2])
-                hum_data = float(line[3][9:-2])
+                try:
+                    temp_data = float(line[2][10:-2])
+                    hum_data = float(line[3][9:-2])
+                except:
+                    continue
                 print(temp_data, hum_data)
                 time_data_temp = datetime.datetime.timestamp(datetime.datetime.now())
                 c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data_temp, 'value':temp_data, 'id':5})
@@ -93,8 +105,11 @@ def take_data_double():
                 t_elapsed = int(datetime.datetime.timestamp(datetime.datetime.now()))
             else:
                 time.sleep(0.25)
-                temp_data = float(line[2][10:-2])
-                hum_data = float(line[3][9:-2])
+                try:
+                    temp_data = float(line[2][10:-2])
+                    hum_data = float(line[3][9:-2])
+                except:
+                    continue
                 print(temp_data, hum_data)
                 time_data_temp = datetime.datetime.timestamp(datetime.datetime.now())
                 c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data_temp, 'value':temp_data, 'id':5})
@@ -110,5 +125,5 @@ def take_data_double():
         time.sleep(1)
     c.close()
 
-take_data_single()
-#take_data_double()
+# take_data_single()
+take_data_double()
