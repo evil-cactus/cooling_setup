@@ -37,31 +37,43 @@ void setup()
     Serial.begin(9600);
     Serial.println("\nTCAScanner ready!");
     
-    for (uint8_t t=0; t<2; t++) {
+    for (uint8_t t=0; t<8; t++) {
       tcaselect(t);
       Serial.print("TCA Port #"); Serial.println(t);
 
-      for (uint8_t addr = 66; addr<=70; addr++) {
+      for (uint8_t addr = 44; addr<=127; addr++) {
         if (addr == TCAADDR) continue;
-        Serial.print("Address: #"); Serial.println(addr);
         Wire.beginTransmission(addr);
-        if (sht31.begin(0x45)) {   // Set to 0x45 for alternate i2c addr //connected low (gnd)
-          Serial.println("Could find SHT31");
-        }
         if (!Wire.endTransmission()) {
           Serial.print("Found I2C 0x");  Serial.println(addr,HEX);
-          Serial.println("SHT31 test");
-            if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr //connected low (gnd)
-          //    if (! sht31.begin(0x45)) {   // Set to 0x45 for alternate i2c addr //connected high (VDD)
-          Serial.println("Couldn't find SHT31");
-          while (1) delay(1);
-  }
+          //Serial.println("SHT31 test");
+          if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr //connected low (gnd)
+            Serial.println("Couldn't find SHT31");
+          }
+          if (! sht31.begin(0x45)) {   // Set to 0x45 for alternate i2c addr //connected high (VDD)
+            Serial.println("Couldn't find SHT31");
+          }
         }
       }
     }
     Serial.println("\ndone");
 }
 
-void loop() 
-{
+void loop() {
+  float t = sht31.readTemperature();
+  float h   = sht31.readHumidity();
+
+  if (! isnan(t)) {  // check if 'is not a number'
+    Serial.print("Temp *C = "); Serial.println(t); //Serial.print("\t\t");
+  } else { 
+    Serial.println("Failed to read temperature");
+  }
+  
+  if (! isnan(h)) {  // check if 'is not a number'
+    Serial.print("Hum. % = "); Serial.println(h);
+  } else { 
+    Serial.println("Failed to read humidity");
+   }
+
+  delay(1000);
 }
