@@ -9,3 +9,7 @@ cmap = plt.get_cmap('RdYlBu')
 plt.figure(figsize=(10,4), dpi=200)
 plt.scatter(x,y,c=y, cmap=cmap)
 plt.show()
+
+text = 'adfjofug4irnldjvnkj'
+print(text[0:4])
+print(text['0:4'])

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import sqlite3
 
-db_path = 'C:\\Users\\schum\\github\\cooling_setup\\sens\\database\\first.db'
+db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
 
 
 #small changes to the website itself

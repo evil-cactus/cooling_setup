@@ -61,8 +61,8 @@ st.warning('UTC-timestamp')
 graph = st.empty()#create the graph container
 if (len(type_sensor) != 0):
     #the monitoring loop
-    doit = st.button('Do it again!')
-    if doit:
+    #doit = st.button('Do it again!')
+    if sel_sens:
         ax = plt.figure(figsize=(12,5), dpi=150)
         c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':sens_id})
         df = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
