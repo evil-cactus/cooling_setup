@@ -16,7 +16,7 @@ st.set_page_config(
     page_title='PTSD4MoMi'
 )
 #list_of_colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']
-list_of_colors=['#e31a1c','#ff7f00','#6a3d9a','#ffff99','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
+list_of_colors=['#e31a1c','#ff7f00','#6a3d9a','#7cd9b4','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
 #connect to the database and create table sensors, if not there
 conn = sqlite3.connect(db_path)
 c = conn.cursor()
@@ -55,11 +55,11 @@ else:
 if (combi_sens == True):
     col1, col2 = st.columns(2)
     sensor_type_t = 'temperature'
-    sensor_unit_t = "Degrees Celsius"
+    sensor_unit_t = '°C'
     sensor_id_t = last_id + 1
     sensor_des_t = 'sht_' + str(sensor_id_t) + 'T'
     sensor_type_h = 'humidity'
-    sensor_unit_h = "% rel.hum."
+    sensor_unit_h = '%'
     sensor_id_h = sensor_id_t + 1
     sensor_des_h = 'sht_' + str(sensor_id_t) + 'H'
     col1.text('Type: ' + str(sensor_type_t) + '\n' + 'Unit: ' + str(sensor_unit_t) + '\n' + 'int. ID: ' + str(sensor_id_t) + '\n' + 'Name: ' + str(sensor_des_t))
@@ -71,7 +71,7 @@ else:
         ('temperature', 'humidity', 'voltage', 'current', 'other')
     )
     if (sensor_type == "temperature"):
-        sensor_unit = st.radio('Choose unit of sensor:', ('Kelvin', 'Degrees Celsius', 'Freedom Units'))
+        sensor_unit = st.radio('Choose unit of sensor:', ('K', '°C', '°F'))
     elif (sensor_type == "humidity"):
         sensor_unit = 'feucht'
         st.info('Unit of humidity-sensor does not need to be specified. It has been set automatically.')
@@ -158,6 +158,21 @@ st.subheader('Graphical Monitoring Interface')
 graph = st.empty()#create the graph container
 if (len(type_sensor) != 0):
     #the monitoring loop
+    st.sidebar.subheader('Y-axis scaling')
+    nmb_col = st.sidebar.columns(2)
+    diag_1_low = nmb_col[0].number_input('1 lower bound',0.)
+    diag_1_hgh = nmb_col[1].number_input('1 upper bound',1.)
+    diag_2_low = nmb_col[0].number_input('2 lower bound',0.)
+    diag_2_hgh = nmb_col[1].number_input('2 upper bound',1.)
+    diag_3_low = nmb_col[0].number_input('3 lower bound',0.)
+    diag_3_hgh = nmb_col[1].number_input('3 upper bound',1.)
+    diag_4_low = nmb_col[0].number_input('4 lower bound',0.)
+    diag_4_hgh = nmb_col[1].number_input('4 upper bound',1.)
+    scale_change = st.sidebar.button('update y-axis scales')#
+    if (scale_change == True):
+        diagram_yaxis = [(diag_1_low,diag_1_hgh),(diag_2_low,diag_2_hgh),(diag_3_low,diag_3_hgh),(diag_4_low,diag_4_hgh)]
+    else:
+        diagram_yaxis = [(diag_1_low,diag_1_hgh),(diag_2_low,diag_2_hgh),(diag_3_low,diag_3_hgh),(diag_4_low,diag_4_hgh)]
     while True:
         now = int(datetime.datetime.now().timestamp())
         fig, ax = plt.subplots(nrows=len(type_sensor),ncols=1, figsize=(12,12), sharex=True)
@@ -180,15 +195,17 @@ if (len(type_sensor) != 0):
             #for label in ax[n].get_xticklabels(which='major'):
             #    label.set(rotation=30, horizontalalignment='right')
             ax[n].grid(which='both',color='black')
+            ax[n].axvline(x=now)
             ax[n].set_facecolor('white')
             ax[n].set_title(str(type_sensor[n])+'-sensors')
             #ax[n].set_ylabel(str(type_sensor[n])+'-sensors')
-            #ax[n].set_ylim(0,1)
+            ax[n].set_ylim(diagram_yaxis[n])
             ax[n].legend(loc='upper left')
-        plt.xlim(now-180,now+5)
+        plt.xticks((now, now-15, now-30, now-45, now-60, now-90, now-120), ('now', 'now-15s', 'now-30s', 'now-45s', 'now-60s', 'now-90s', 'now-120s'))
+        plt.xlim(now-125,now+5)
         plt.tight_layout()
         graph.pyplot(fig)
-        time.sleep(0.5)
+        time.sleep(0.2)
         plt.close()
 else:
     st.warning('You\'re missing sensors to be shown here. Maybe add some above.')
