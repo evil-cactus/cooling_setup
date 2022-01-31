@@ -86,16 +86,16 @@ if (psu_auto_butt == True):
         low_103 = st.number_input('initial voltage for KW103')
         high_103 = st.number_input('target voltage for KW103')
         steps_103 = st.number_input('voltage steps for KW103')
-        st.text('suggested number of steps: ' + str(int((high_103-low_103)*5 + 1)))
+        # st.text('suggested number of steps: ' + str(int((high_103-low_103)*5 + 1)))
         st.subheader('R&S HMP4040 Settings (upper peltier)')
         low_4040 = st.number_input('initial voltage for HMP4040')
         high_4040 = st.number_input('target voltage for HMP4040')
         steps_4040 = st.number_input('voltage steps for HMP4040')
-        st.text('suggested number of steps: ' + str(int((high_4040-low_4040)*5 + 1)))
+        # st.text('suggested number of steps: ' + str(int((high_4040-low_4040)*5 + 1)))
     step = -1
-voltages_103,timmin_psu_103 = psu_voltage_driver(low_103,high_103,steps_103)
-voltages_4040,timmin_psu_4040 = psu_voltage_driver(low_4040,high_4040,steps_4040)
-duration = timmin_psu_103
+    voltages_103,timmin_psu_103 = psu_voltage_driver(low_103,high_103,steps_103)
+    voltages_4040,timmin_psu_4040 = psu_voltage_driver(low_4040,high_4040,steps_4040)
+    duration = timmin_psu_103
 
 start = st.button('start')
 ## MEASUREMENTS ##
@@ -134,55 +134,58 @@ if (start == True):
                     for a in range(7):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
-                        value = round(float(line),4)
-                        delta_values[a] = round(value - values[a],4)
-                        values[a] = value
+                        try:
+                            value = round(float(line),4)
+                            delta_values[a] = round(value - values[a],4)
+                            values[a] = value
+                        except:
+                            continue
                     dp_old = dp
                     dp += 6
                 elif (port == 'COM4' and com4_connect == True):
                     for a in range(6):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
-                        value = round(float(line),4)
-                        delta_values[a] = round(value - values[a],4)
-                        values[a] = value
+                        try:
+                            value = round(float(line),4)
+                            delta_values[a] = round(value - values[a],4)
+                            values[a] = value
+                        except:
+                            continue
                     dp_old = dp
                     dp += 6
                 if (port == 'COM3' and com3_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
-                        value = round(float(line),4)
-                        if (a == 0):
-                            delta_values[6] = round(value - values[6],4)
-                            values[6] = value
-                        if (a == 1):
-                            delta_values[7] = round(value - values[7],4)
-                            values[7] = value
+                        try:
+                            value = round(float(line),4)
+                            if (a == 0):
+                                delta_values[6] = round(value - values[6],4)
+                                values[6] = value
+                            if (a == 1):
+                                delta_values[7] = round(value - values[7],4)
+                                values[7] = value
+                        except:
+                            continue
                     dp_old = dp
                     dp += 2
                 elif (port == 'COM4' and com4_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
-                        value = round(float(line),4)
-                        if (a == 0):
-                            delta_values[6] = round(value - values[6],4)
-                            values[6] = value
-                        if (a == 1):
-                            delta_values[7] = round(value - values[7],4)
-                            values[7] = value
+                        try:
+                            value = round(float(line),4)
+                            if (a == 0):
+                                delta_values[6] = round(value - values[6],4)
+                                values[6] = value
+                            if (a == 1):
+                                delta_values[7] = round(value - values[7],4)
+                                values[7] = value
+                        except:
+                            continue
                     dp_old = dp
                     dp += 2
-                # elif (port == 'COM5' and com5_connect == False):
-                #     value = round(float(line[sections[0][0]:sections[0][1]]),4)
-                #     delta_values[6] = round(value - values[6],4)
-                #     values[6] = value
-                #     value = round(float(line[sections[1][0]:sections[1][1]]),4)
-                #     delta_values[7] = round(value - values[7],4)
-                #     values[7] = value
-                #     dp_old = dp
-                #     dp += 2
         for v in range(len(values)-2):
             time_data = float(datetime.datetime.timestamp(datetime.datetime.now())) + (0.1*(v-1))
             c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data, 'value':values[v], 'id':v+1})
