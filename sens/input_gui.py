@@ -5,6 +5,8 @@ import time
 import datetime
 import math
 import serial
+import os
+import platform
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import sqlite3
@@ -12,7 +14,11 @@ import pyvisa
 from hmp4040 import hmp4040
 from psu import psu_voltage_driver
 
-db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
+
+if (platform.system() == 'Linux'):
+    db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
+else:
+    db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
 
 
 #small changes to the website itself
@@ -55,7 +61,10 @@ st.subheader('Measurement')
 st.sidebar.subheader('Settings')
 connections = []
 duration = float(st.sidebar.text_input('Duration of measurement in minutes:',0))
-connections = ['COM3', 'COM4']
+if (platform.system() == 'Linux'):
+    connections = ['/dev/ttyACM2','/dev/ttyACM1' ]
+else:
+    connections = ['COM3', 'COM4']
 usable_conns = []
 for connection in connections:
     try:
@@ -74,8 +83,8 @@ if (len(connections) != 0):
     st.info('Usable connections are: ' + str(usable_conns)[1:-1])
 else:
     st.warning('There are no usable connections. Check USB-connections!')
-com3_connect = st.sidebar.checkbox('COM3 is connected to SHT31 & PT1000')
-com4_connect = st.sidebar.checkbox('COM4 is connected to SHT31 & PT1000')
+com3_connect = st.sidebar.checkbox('COM3/ACM2 is connected to SHT31 & PT1000')
+com4_connect = st.sidebar.checkbox('COM4/ACM1 is connected to SHT31 & PT1000')
 
 psu_auto_butt = st.checkbox('automate PSU?')
 timmin_psu_103 = 0
@@ -130,19 +139,7 @@ if (start == True):
             with serial.Serial(port, 9600, timeout=1.0) as ser:
                 #print(line)
                 # print(line[0:10]) #SHT31 test
-                if (port == 'COM3' and com3_connect == True):
-                    for a in range(7):
-                        line = ser.read_until('\r\n'.encode())
-                        line = line.decode("utf-8")
-                        try:
-                            value = round(float(line),4)
-                            delta_values[a] = round(value - values[a],4)
-                            values[a] = value
-                        except:
-                            continue
-                    dp_old = dp
-                    dp += 6
-                elif (port == 'COM4' and com4_connect == True):
+                if ((port == 'COM3' or port == '/dev/ttyACM2') and com3_connect == True):
                     for a in range(6):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
@@ -154,7 +151,19 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 6
-                if (port == 'COM3' and com3_connect == False):
+                elif ((port == 'COM4' or port == '/dev/ttyACM1') and com4_connect == True):
+                    for a in range(6):
+                        line = ser.read_until('\r\n'.encode())
+                        line = line.decode("utf-8")
+                        try:
+                            value = round(float(line),4)
+                            delta_values[a] = round(value - values[a],4)
+                            values[a] = value
+                        except:
+                            continue
+                    dp_old = dp
+                    dp += 6
+                if ((port == 'COM3' or port == '/dev/ttyACM2') and com3_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
@@ -170,7 +179,7 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 2
-                elif (port == 'COM4' and com4_connect == False):
+                elif ((port == 'COM4' or port == '/dev/ttyACM1') and com4_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         line = line.decode("utf-8")
@@ -196,7 +205,10 @@ if (start == True):
             t_last_step = float(datetime.datetime.timestamp(datetime.datetime.now()))
             ### HMP4040 ###
             rm = pyvisa.ResourceManager()
-            hmp4040_ps = rm.open_resource('ASRL5::INSTR')
+            if(platform.system() == 'Linux'):
+                hmp4040_ps = rm.open_resource('ASRL/dev/ttyUSB0::INSTR')
+            else:
+                hmp4040_ps = rm.open_resource('ASRL5::INSTR')
             # hmp4040 = hmp4040(pyvisa_instr=hmp4040_ps)
             hmp4040_ps.write('INST OUT1')
             set_string = 'VOLT ' + str(voltages_4040[step])
@@ -214,7 +226,11 @@ if (start == True):
             values[11] = value
             rm.close()
             ### KW103 ###
-            with serial.Serial('COM6', baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
+            if(platform.system() == 'Linux'):
+                port_KWR103 = '/dev/ttyAMC0'
+            else:
+                port_KWR103 = 'COM6'
+            with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
                 set_string = 'VSET:'+str(voltages_103[step])+'\n'
@@ -246,7 +262,10 @@ if (start == True):
                 dp += 4
         else:
             rm = pyvisa.ResourceManager()
-            hmp4040_ps = rm.open_resource('ASRL5::INSTR')
+            if(platform.system() == 'Linux'):
+                hmp4040_ps = rm.open_resource('ASRL/dev/ttyUSB0::INSTR')
+            else:
+                hmp4040_ps = rm.open_resource('ASRL5::INSTR')
             # hmp4040 = hmp4040(pyvisa_instr=hmp4040_ps)
             V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
             value = V_out_4040
@@ -257,7 +276,11 @@ if (start == True):
             delta_values[11] = round(value - values[11],2)
             values[11] = value
             rm.close()
-            with serial.Serial('COM6', baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
+            if(platform.system() == 'Linux'):
+                port_KWR103 = '/dev/ttyAMC0'
+            else:
+                port_KWR103 = 'COM6'
+            with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
                 # ser.write("VSET:6.4\n".encode()) #implement the psu.py functionality
