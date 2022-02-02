@@ -31,13 +31,6 @@ def psu_voltage_driver(low_volt, high_volt, steps):
     return voltages,timmin
 
 
-# psu_voltage_driver(6,17,23)
 
-db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
-conn = sqlite3.connect(db_path)
-c = conn.cursor()
-sens_id = 9
-c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':sens_id})
-df = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
-df['time'] = pd.to_datetime(df['time'],unit='s')
-df.to_excel('db_check.xlsx')
+
+

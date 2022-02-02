@@ -14,9 +14,13 @@ import pyvisa
 from hmp4040 import hmp4040
 from psu import psu_voltage_driver
 
+pltf = platform.system()
 
-if (platform.system() == 'Linux'):
+if (pltf == 'Linux'):
     db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
+    port_KWR103 = '/dev/ttyACM0'
+    port_COM3_equiv = '/dev/ttyACM2'
+    port_COM4_equiv = '/dev/ttyACM1'
 else:
     db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
 
@@ -62,7 +66,7 @@ st.sidebar.subheader('Settings')
 connections = []
 duration = float(st.sidebar.text_input('Duration of measurement in minutes:',0))
 if (platform.system() == 'Linux'):
-    connections = ['/dev/ttyACM2','/dev/ttyACM1' ]
+    connections = [port_COM3_equiv,port_COM4_equiv ]
 else:
     connections = ['COM3', 'COM4']
 usable_conns = []
@@ -86,21 +90,21 @@ else:
 com3_connect = st.sidebar.checkbox('COM3/ACM2 is connected to SHT31 & PT1000')
 com4_connect = st.sidebar.checkbox('COM4/ACM1 is connected to SHT31 & PT1000')
 
-psu_auto_butt = st.checkbox('automate PSU?')
+
 timmin_psu_103 = 0
+with st.expander(label='PSU automation'):
+    psu_auto_butt = st.checkbox('Check for automation.')
+    st.subheader('KORAD KWR103 Settings (lower peltier)')
+    low_103 = st.number_input('initial voltage for KW103')
+    high_103 = st.number_input('target voltage for KW103')
+    steps_103 = st.number_input('voltage steps for KW103')
+    # st.text('suggested number of steps: ' + str(int((high_103-low_103)*5 + 1)))
+    st.subheader('R&S HMP4040 Settings (upper peltier)')
+    low_4040 = st.number_input('initial voltage for HMP4040')
+    high_4040 = st.number_input('target voltage for HMP4040')
+    steps_4040 = st.number_input('voltage steps for HMP4040')
+    # st.text('suggested number of steps: ' + str(int((high_4040-low_4040)*5 + 1)))
 if (psu_auto_butt == True):
-    psu_cont = st.empty()
-    with psu_cont.container():
-        st.subheader('KORAD KWR103 Settings (lower peltier)')
-        low_103 = st.number_input('initial voltage for KW103')
-        high_103 = st.number_input('target voltage for KW103')
-        steps_103 = st.number_input('voltage steps for KW103')
-        # st.text('suggested number of steps: ' + str(int((high_103-low_103)*5 + 1)))
-        st.subheader('R&S HMP4040 Settings (upper peltier)')
-        low_4040 = st.number_input('initial voltage for HMP4040')
-        high_4040 = st.number_input('target voltage for HMP4040')
-        steps_4040 = st.number_input('voltage steps for HMP4040')
-        # st.text('suggested number of steps: ' + str(int((high_4040-low_4040)*5 + 1)))
     step = -1
     voltages_103,timmin_psu_103 = psu_voltage_driver(low_103,high_103,steps_103)
     voltages_4040,timmin_psu_4040 = psu_voltage_driver(low_4040,high_4040,steps_4040)
@@ -136,14 +140,12 @@ if (start == True):
     while (t_elapsed < (t_start + t_max)):
         dp_counter.metric(label='Datapoints taken:',value=dp,delta=dp-dp_old)
         for port in usable_conns:
-            with serial.Serial(port, 9600, timeout=1.0) as ser:
-                #print(line)
-                # print(line[0:10]) #SHT31 test
-                if ((port == 'COM3' or port == '/dev/ttyACM2') and com3_connect == True):
+            with serial.Serial(port, 9600, timeout=0.5) as ser:
+                if ((port == 'COM3' or port == port_COM3_equiv) and com3_connect == True):
                     for a in range(6):
                         line = ser.read_until('\r\n'.encode())
-                        line = line.decode("utf-8")
                         try:
+                            line = line.decode("utf-8")
                             value = round(float(line),4)
                             delta_values[a] = round(value - values[a],4)
                             values[a] = value
@@ -151,11 +153,11 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 6
-                elif ((port == 'COM4' or port == '/dev/ttyACM1') and com4_connect == True):
+                elif ((port == 'COM4' or port == port_COM4_equiv) and com4_connect == True):
                     for a in range(6):
                         line = ser.read_until('\r\n'.encode())
-                        line = line.decode("utf-8")
                         try:
+                            line = line.decode("utf-8")
                             value = round(float(line),4)
                             delta_values[a] = round(value - values[a],4)
                             values[a] = value
@@ -163,11 +165,11 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 6
-                if ((port == 'COM3' or port == '/dev/ttyACM2') and com3_connect == False):
+                if ((port == 'COM3' or port == port_COM3_equiv) and com3_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
-                        line = line.decode("utf-8")
                         try:
+                            line = line.decode("utf-8")
                             value = round(float(line),4)
                             if (a == 0):
                                 delta_values[6] = round(value - values[6],4)
@@ -179,11 +181,11 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 2
-                elif ((port == 'COM4' or port == '/dev/ttyACM1') and com4_connect == False):
+                elif ((port == 'COM4' or port == port_COM4_equiv) and com4_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
-                        line = line.decode("utf-8")
                         try:
+                            line = line.decode("utf-8")
                             value = round(float(line),4)
                             if (a == 0):
                                 delta_values[6] = round(value - values[6],4)
@@ -226,16 +228,14 @@ if (start == True):
             values[11] = value
             rm.close()
             ### KW103 ###
-            if(platform.system() == 'Linux'):
-                port_KWR103 = '/dev/ttyAMC0'
-            else:
+            if(platform.system() == 'Windows'):
                 port_KWR103 = 'COM6'
-            with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
+            with serial.Serial(port_KWR103, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
                 set_string = 'VSET:'+str(voltages_103[step])+'\n'
                 ser.write(set_string.encode())
-                ser.write('ISET:10\n'.encode())
+                ser.write('ISET:12\n'.encode())
                 ser.write('VOUT?\n'.encode())
                 output = ser.read_until('\n')
                 output = output.decode("utf-8")
@@ -276,11 +276,9 @@ if (start == True):
             delta_values[11] = round(value - values[11],2)
             values[11] = value
             rm.close()
-            if(platform.system() == 'Linux'):
-                port_KWR103 = '/dev/ttyAMC0'
-            else:
+            if(platform.system() == 'Windows'):
                 port_KWR103 = 'COM6'
-            with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
+            with serial.Serial(port_KWR103, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
                 # ser.write("VSET:6.4\n".encode()) #implement the psu.py functionality
