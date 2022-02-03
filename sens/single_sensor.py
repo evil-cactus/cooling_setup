@@ -16,7 +16,8 @@ st.set_page_config(
 #list_of_colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']
 list_of_colors=['#e31a1c','#fdbf6f','#ff7f00','#6a3d9a','#ffff99','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
 #connect to the database and create table sensors, if not there
-db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
+#db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
+db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
 conn = sqlite3.connect(db_path)
 c = conn.cursor()
 

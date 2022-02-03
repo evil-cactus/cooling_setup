@@ -23,7 +23,7 @@ with serial.Serial('COM6', baudrate=115200, bytesize=8, parity='N', stopbits=1, 
 
 #print(ask_for_port())
 
-with serial.Serial('/dev/ttyACM1', 9600, timeout=1.0) as ser:
+with serial.Serial('/dev/ttyACM2', 9600, timeout=1.0) as ser:
             for a in range(6):
                 line = ser.read_until('\r\n'.encode())
                 line = line.decode("utf-8")
