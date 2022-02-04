@@ -24,8 +24,8 @@ print(platform.system())
 
 def psu_voltage_driver(low_volt, high_volt, steps):
     voltages = np.array(np.linspace(float(low_volt),float(high_volt),int(steps)))
-    time = steps+1*5*60 #in seconds
-    timmin = steps*5 #in minutes
+    time = steps+1*2*60 #in seconds #change back to 5
+    timmin = steps*2 #in minutes#change back to 5
     # print(voltages)
     # print(time, timmin)
     return voltages,timmin

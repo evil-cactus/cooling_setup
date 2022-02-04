@@ -165,7 +165,7 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 6
-                if ((port == 'COM3' or port == port_COM3_equiv) and com3_connect == False):
+                elif ((port == 'COM3' or port == port_COM3_equiv) and com3_connect == False):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         try:
@@ -181,7 +181,7 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 2
-                elif ((port == 'COM4' or port == port_COM4_equiv) and com4_connect == False):
+                elif ((port == 'COM4' or port == port_COM4_equiv) and com4_connect == False and com3_connect == True):
                     for a in range(2):
                         line = ser.read_until('\r\n'.encode())
                         try:
@@ -193,6 +193,18 @@ if (start == True):
                             if (a == 1):
                                 delta_values[7] = round(value - values[7],4)
                                 values[7] = value
+                        except:
+                            continue
+                    dp_old = dp
+                    dp += 2
+                elif ((port == 'COM4' or port == port_COM4_equiv) and com4_connect == False and com3_connect == False):
+                    for a in range(2):
+                        line = ser.read_until('\r\n'.encode())
+                        try:
+                            line = line.decode("utf-8")
+                            value = round(float(line),4)
+                            delta_values[a] = round(value - values[a],4)
+                            values[a] = value
                         except:
                             continue
                     dp_old = dp
@@ -212,21 +224,24 @@ if (start == True):
             else:
                 hmp4040_ps = rm.open_resource('ASRL5::INSTR')
             # hmp4040 = hmp4040(pyvisa_instr=hmp4040_ps)
-            hmp4040_ps.write('INST OUT1')
-            set_string = 'VOLT ' + str(voltages_4040[step])
-            hmp4040_ps.write(set_string)
-            hmp4040_ps.write('CURR 10')
-            hmp4040_ps.write('OUTP:SEL1')
-            hmp4040_ps.write('OUTP 1')
-            V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
-            value = V_out_4040
-            delta_values[10] = round(value - values[10],2)
-            values[10] = value
-            I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))
-            value = I_out_4040
-            delta_values[11] = round(value - values[11],2)
-            values[11] = value
-            rm.close()
+            try:
+                hmp4040_ps.write('INST OUT1')
+                set_string = 'VOLT ' + str(voltages_4040[step])
+                hmp4040_ps.write(set_string)
+                hmp4040_ps.write('CURR 10')
+                hmp4040_ps.write('OUTP:SEL1')
+                hmp4040_ps.write('OUTP 1')
+                V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
+                value = V_out_4040
+                delta_values[10] = round(value - values[10],2)
+                values[10] = value
+                I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))
+                value = I_out_4040
+                delta_values[11] = round(value - values[11],2)
+                values[11] = value
+                rm.close()
+            except:
+                continue
             ### KW103 ###
             if(platform.system() == 'Windows'):
                 port_KWR103 = 'COM6'
@@ -267,18 +282,21 @@ if (start == True):
             else:
                 hmp4040_ps = rm.open_resource('ASRL5::INSTR')
             # hmp4040 = hmp4040(pyvisa_instr=hmp4040_ps)
-            V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
-            value = V_out_4040
-            delta_values[10] = round(value - values[10],2)
-            values[10] = value
-            I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))
-            value = I_out_4040
-            delta_values[11] = round(value - values[11],2)
-            values[11] = value
-            rm.close()
+            try:
+                V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
+                value = V_out_4040
+                delta_values[10] = round(value - values[10],2)
+                values[10] = value
+                I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))
+                value = I_out_4040
+                delta_values[11] = round(value - values[11],2)
+                values[11] = value
+                rm.close()
+            except:
+                continue
             if(platform.system() == 'Windows'):
                 port_KWR103 = 'COM6'
-            with serial.Serial(port_KWR103, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
+            with serial.Serial(port_KWR103, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=2.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
                 # ser.write("VSET:6.4\n".encode()) #implement the psu.py functionality

@@ -21,13 +21,14 @@ with serial.Serial('COM6', baudrate=115200, bytesize=8, parity='N', stopbits=1, 
 # ports = ['/dev/ttyACM0','/dev/ttyACM1','/dev/ttyACM2','/dev/ttyUSB0']
 # KWR103, ARD1_COM4, ARD2_COM3, HMP4040
 
-#print(ask_for_port())
+print(ask_for_port())
 
-with serial.Serial('/dev/ttyACM2', 9600, timeout=1.0) as ser:
-            for a in range(6):
+with serial.Serial('/dev/ttyACM1', 9600, timeout=1.0) as ser:
+            for a in range(2):
                 line = ser.read_until('\r\n'.encode())
                 line = line.decode("utf-8")
                 print(line)
+
 """
 with serial.Serial('/dev/ttyACM0', baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=2.0) as ser:
                 ser.reset_output_buffer()
