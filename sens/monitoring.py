@@ -7,8 +7,15 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import sqlite3
+import platform
+import os
 
-db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
+pltf = platform.system()
+
+if (pltf == 'Linux'):
+    db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
+else:
+    db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
 
 
 #small changes to the website itself
