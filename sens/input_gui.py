@@ -1,3 +1,4 @@
+#by Henry Schumacher - 2022
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -14,8 +15,14 @@ import pyvisa
 from hmp4040 import hmp4040
 from psu import psu_voltage_driver
 
+# This program is used to generate an GUI for the measurement of the MoMi-Testbench.
+# It uses Arduino Nano Every microcontrollers to read out two SHT31 sensors as well es two PT1000 thermo-resistors.
+# Furthermore does it measure and controll the two PSUs with their respective currents and voltages.
+# Every command starting with "st." is a function from the package "streamlit" which is used to create a locally hosted webpage.
+# To start the program open a terminal, move to this files directory and type in "streamlit run input_gui.py". It will take a couple of seconds and will then open a new tab in the browser.
 
-if (platform.system() == 'Linux'):
+
+if (platform.system() == 'Linux'): # This is the path to the database in which the measurements are stored.
     db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
 else:
     db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
@@ -25,10 +32,10 @@ else:
 st.set_page_config(
     page_title='MoMi-Input'
 )
-#list_of_colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']
+
 list_of_colors=['#e31a1c','#ff7f00','#6a3d9a','#ffff99','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
-#connect to the database and create table sensors, if not there
-conn = sqlite3.connect(db_path)
+
+conn = sqlite3.connect(db_path)  # Connect to the database and create table sensors, if not there.
 c = conn.cursor()
 c.execute(""" CREATE TABLE IF NOT EXISTS sensors (
     sens_id integer,
@@ -50,8 +57,8 @@ if (len(data) != 0):
 else:
     last_id = 0
 c.close()
-# this Button is just to refresh, which it only does implicitely lol
-refresh = st.sidebar.button('refresh')
+
+refresh = st.sidebar.button('refresh') # This Button is just to refresh, which it only does implicitely.
 
 ##MEASUREMENT MAIN APP##
 st.subheader('Measurement')
@@ -68,7 +75,7 @@ else:
 usable_conns = []
 for connection in connections:
     try:
-        with serial.Serial(str(connection), 9600, timeout=0.5) as ser:
+        with serial.Serial(str(connection), 9600, timeout=0.5) as ser: # simple connection check
             name = ser.name
             state = ser.is_open
             line = ser.readline()
@@ -78,16 +85,17 @@ for connection in connections:
         continue
     except serial.serialutil.SerialException:
         continue
-selected_conns = st.sidebar.multiselect('Choose connections:', usable_conns)
+# selected_conns = st.sidebar.multiselect('Choose connections:', usable_conns) # This is a stub. This selector is no longer in use.
 if (len(connections) != 0):
     st.info('Usable connections are: ' + str(usable_conns)[1:-1])
 else:
     st.warning('There are no usable connections. Check USB-connections!')
-com3_connect = st.sidebar.checkbox('COM3/ACM2 is connected to SHT31 & PT1000')
-com4_connect = st.sidebar.checkbox('COM4/ACM1 is connected to SHT31 & PT1000')
+com3_connect = st.sidebar.checkbox('COM3/ACM2 is connected to SHT31 & PT1000') # how much will have to be read out
+com4_connect = st.sidebar.checkbox('COM4/ACM1 is connected to SHT31 & PT1000') # how much will have to be read out
 
-psu_auto_butt = st.checkbox('automate PSU?')
-timmin_psu_103 = 0
+psu_auto_butt = st.checkbox('automate PSU?') # Enable the options for setting a routine up to step through a range of voltages.
+# For the peltier-elements voltage is the important metric, therefore it is not supported to range through currents.
+timmin_psu_103 = 0 # The KORAD KWR103 is the "time keeper". For my tests they changed in sync.
 if (psu_auto_butt == True):
     psu_cont = st.empty()
     with psu_cont.container():
@@ -102,26 +110,26 @@ if (psu_auto_butt == True):
         steps_4040 = st.number_input('voltage steps for HMP4040')
         # st.text('suggested number of steps: ' + str(int((high_4040-low_4040)*5 + 1)))
     step = -1
-    voltages_103,timmin_psu_103 = psu_voltage_driver(low_103,high_103,steps_103)
-    voltages_4040,timmin_psu_4040 = psu_voltage_driver(low_4040,high_4040,steps_4040)
-    duration = timmin_psu_103
+    voltages_103,timmin_psu_103 = psu_voltage_driver(low_103,high_103,steps_103) # Creates lists of voltages which the PSU will be set to. Also total run time is calculated. See psu.py.
+    voltages_4040,timmin_psu_4040 = psu_voltage_driver(low_4040,high_4040,steps_4040) # Same as above, just for the other PSU.
+    duration = timmin_psu_103 # Overwrites the set duration from the interface above.
 
 start = st.button('start')
 ## MEASUREMENTS ##
 if (start == True):
-    dp,dp_old = 0,0
-    t_max = int(duration*60)
-    t_max_f = float(duration*60)
-    t_start = int(datetime.datetime.timestamp(datetime.datetime.now()))
-    t_start_f = float(datetime.datetime.timestamp(datetime.datetime.now()))
-    t_elapsed = 0
-    t_since_last_step = 0
-    t_last_step = t_start_f
-    counter_col = st.columns(3)
-    dp_counter = counter_col[0].empty()
-    timer = counter_col[1].empty()
-    timer_min = counter_col[2].empty()
-    metrics = st.empty()
+    dp,dp_old = 0,0 # datapoint counters
+    t_max = int(duration*60) # total run time in seconds
+    t_max_f = float(duration*60) # as above and floatpoint value
+    t_start = int(datetime.datetime.timestamp(datetime.datetime.now())) # time of start as reference
+    t_start_f = float(datetime.datetime.timestamp(datetime.datetime.now())) # as above and in floatpoint value
+    t_elapsed = 0 # passed time counter
+    t_since_last_step = 0 # time counter since last change of voltage
+    t_last_step = t_start_f # initial time of above is equal to start time
+    counter_col = st.columns(3) # visual item for showing datapoint counter and time
+    dp_counter = counter_col[0].empty() # part of above
+    timer = counter_col[1].empty() # part of above
+    timer_min = counter_col[2].empty() # part of above
+    metrics = st.empty() # visual item for showing metrics
     values = [0,0,0,0,0,0,0,0,0,0,0,0]
     delta_values = [0,0,0,0,0,0,0,0,0,0,0,0]
     conn = sqlite3.connect(db_path)
@@ -135,18 +143,19 @@ if (start == True):
         )""")
     while (t_elapsed < (t_start + t_max)):
         dp_counter.metric(label='Datapoints taken:',value=dp,delta=dp-dp_old)
-        for port in usable_conns:
+        for port in usable_conns: # cycle through connected ARDUINOs
             with serial.Serial(port, 9600, timeout=1.0) as ser:
-                #print(line)
-                # print(line[0:10]) #SHT31 test
+                # If a comX_connect variable is set to TRUE the corresponding
+                # ARDUINO is connected to three sensors and all lines of the
+                # output are useful.
                 if ((port == 'COM3' or port == '/dev/ttyACM2') and com3_connect == True):
                     for a in range(6):
-                        line = ser.read_until('\r\n'.encode())
+                        line = ser.read_until('\r\n'.encode()) # This only works while using the SHT31_read.ino file provided in this repo.
                         line = line.decode("utf-8")
                         try:
                             value = round(float(line),4)
-                            delta_values[a] = round(value - values[a],4)
-                            values[a] = value
+                            delta_values[a] = round(value - values[a],4) # Only used for the visual metrics
+                            values[a] = value # Sets the list-item to be the value later sent to the database.
                         except:
                             continue
                     dp_old = dp
@@ -195,14 +204,16 @@ if (start == True):
                             continue
                     dp_old = dp
                     dp += 2
-        for v in range(len(values)-2):
-            time_data = float(datetime.datetime.timestamp(datetime.datetime.now())) + (0.1*(v-1))
+        for v in range(len(values)-2): # Index shift due to how pandas dataframes and my indexing of sensors work.
+            time_data = float(datetime.datetime.timestamp(datetime.datetime.now())) + (0.1*(v-1)) # Time is key - literally.
             c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data, 'value':values[v], 'id':v+1})
             conn.commit()
         t_since_last_step = round(float(datetime.datetime.timestamp(datetime.datetime.now())) - t_last_step,2)
+        # Check if it's time for a voltage step already
+        # The second condition is connected to the start of a measurement, where step-list-item 0 is needed.
         if ((psu_auto_butt == True and t_since_last_step >= 300) or (psu_auto_butt == True and step == -1)):
             step += 1
-            t_last_step = float(datetime.datetime.timestamp(datetime.datetime.now()))
+            t_last_step = float(datetime.datetime.timestamp(datetime.datetime.now())) # Save for interval keeping.
             ### HMP4040 ###
             rm = pyvisa.ResourceManager()
             if(platform.system() == 'Linux'):
@@ -210,17 +221,17 @@ if (start == True):
             else:
                 hmp4040_ps = rm.open_resource('ASRL5::INSTR')
             # hmp4040 = hmp4040(pyvisa_instr=hmp4040_ps)
-            hmp4040_ps.write('INST OUT1')
-            set_string = 'VOLT ' + str(voltages_4040[step])
-            hmp4040_ps.write(set_string)
-            hmp4040_ps.write('CURR 10')
-            hmp4040_ps.write('OUTP:SEL1')
-            hmp4040_ps.write('OUTP 1')
-            V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?'))
+            hmp4040_ps.write('INST OUT1') # Select output-channel on PSU.
+            set_string = 'VOLT ' + str(voltages_4040[step]) # Create the string, which dictates the voltage
+            hmp4040_ps.write(set_string) # Set the voltage.
+            hmp4040_ps.write('CURR 10') # Set the current to a value above the maximum expected value.
+            hmp4040_ps.write('OUTP:SEL1') # Select Channel 1 for next operation.
+            hmp4040_ps.write('OUTP 1') # Activate Channel.
+            V_out_4040 = float(hmp4040_ps.query('MEAS:VOLT?')) # Query the current voltage-value applied.
             value = V_out_4040
             delta_values[10] = round(value - values[10],2)
             values[10] = value
-            I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))
+            I_out_4040 = float(hmp4040_ps.query('MEAS:CURR?'))  # Query the current-value applied at the moment
             value = I_out_4040
             delta_values[11] = round(value - values[11],2)
             values[11] = value
@@ -233,10 +244,10 @@ if (start == True):
             with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
-                set_string = 'VSET:'+str(voltages_103[step])+'\n'
-                ser.write(set_string.encode())
-                ser.write('ISET:10\n'.encode())
-                ser.write('VOUT?\n'.encode())
+                set_string = 'VSET:'+str(voltages_103[step])+'\n' # Create the string, which dictates the voltage
+                ser.write(set_string.encode()) # Set the voltage.
+                ser.write('ISET:10\n'.encode()) # Set the current to a value above the maximum expected value.
+                ser.write('VOUT?\n'.encode()) # Query the current voltage-value applied.
                 output = ser.read_until('\n')
                 output = output.decode("utf-8")
                 if (output[0] == '0'):
@@ -247,7 +258,7 @@ if (start == True):
                     value = round(float(output[0:5]),2)
                     delta_values[8] = round(value - values[8],2)
                     values[8] = value
-                ser.write('IOUT?\n'.encode())
+                ser.write('IOUT?\n'.encode()) # Query the current-value applied at the moment
                 output = ser.read_until('\n')
                 output = output.decode("utf-8")
                 if (output[0] == '0'):
@@ -261,6 +272,7 @@ if (start == True):
                 dp_old = dp
                 dp += 4
         else:
+            # This is the same as before, just with no voltage adjustment.
             rm = pyvisa.ResourceManager()
             if(platform.system() == 'Linux'):
                 hmp4040_ps = rm.open_resource('ASRL/dev/ttyUSB0::INSTR')
@@ -283,7 +295,6 @@ if (start == True):
             with serial.Serial(port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1.0) as ser:
                 ser.reset_output_buffer()
                 ser.reset_input_buffer()
-                # ser.write("VSET:6.4\n".encode()) #implement the psu.py functionality
                 ser.write('VOUT?\n'.encode())
                 output = ser.read_until('\n')
                 output = output.decode("utf-8")
@@ -313,7 +324,8 @@ if (start == True):
             time_data = float(datetime.datetime.timestamp(datetime.datetime.now())) + 0.1 + v * 0.01
             c.execute("INSERT INTO measurement VALUES (:time, :value, :id)", {'time':time_data, 'value':values[v], 'id':v+1})
             conn.commit()
-                ## METRICS ##
+            ## METRICS ##
+            # Update the visual metrics for easy checking of the current measurements.
             with metrics.container():
                 if (len(usable_conns) == 1):
                     col = st.columns(5)
@@ -345,6 +357,7 @@ if (start == True):
                 t_elapsed_f = float(datetime.datetime.timestamp(datetime.datetime.now()))
                 tim = round(float((t_start_f + t_max_f)-t_elapsed_f),2)
                 timmin = round(tim/60,1)
+                # Update timer.
                 if (tim > 0):
                     timer.metric(label='remaining',value=str(tim) + 's')
                     timer_min.metric(label='remaining',value=str(timmin) + ' min')
