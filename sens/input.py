@@ -7,6 +7,7 @@ import time
 
 
 
+
 def take_data_single():
     conn = sqlite3.connect('C:\\Users\\schum\\github\\cooling_setup\\sens\\database\\first.db')
     c = conn.cursor()
@@ -125,5 +126,36 @@ def take_data_double():
         time.sleep(1)
     c.close()
 
+def take_data_multiple():
+    conn = sqlite3.connect('C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db')
+    c = conn.cursor()
+    c.execute(""" CREATE TABLE IF NOT EXISTS measurement (
+        time datetime,
+        value float,
+        sensor_id integer,
+        PRIMARY KEY (time),
+        FOREIGN KEY (sensor_id) REFERENCES sensors(sens_id)
+        )""")
+    t_max = int(float(input('Measurement length (in minutes): '))*60)
+    t_start = int(datetime.datetime.timestamp(datetime.datetime.now()))
+    t_elapsed = 0
+    #while (t_elapsed <= (t_start + t_max)):
+
+
+with serial.Serial('com4', 9600, timeout=0.5) as ser:
+    line = ser.read_until('\n')
+    #line = line.decode("utf-8")
+    print(line)
+    print('a',line[0:10]) #SHT31 test
+    print('b',float(line[12:17])) # SHT31 temp_data
+    print('c',float(line[19:24])) # SHT31 hum_data
+    print('d',float(line[26:30])) # PT1000_1 V
+    print('e',float(line[32:37])) # PT1000_1 T
+    print('f',float(line[39:43])) # PT1000_2 V
+    print('g',float(line[45:50])) # PT1000_2 T
+
+
+    # ser.close()
 # take_data_single()
-take_data_double()
+# take_data_double()
+# take_data_multiple()

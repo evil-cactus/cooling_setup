@@ -16,7 +16,9 @@ st.set_page_config(
 #list_of_colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']
 list_of_colors=['#e31a1c','#fdbf6f','#ff7f00','#6a3d9a','#ffff99','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
 #connect to the database and create table sensors, if not there
-conn = sqlite3.connect('./database/first.db')
+#db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
+db_path = '/home/momipi/cooling_setup/sens/database/2022.db'
+conn = sqlite3.connect(db_path)
 c = conn.cursor()
 
 c.execute("SELECT * FROM sensors")
@@ -61,8 +63,8 @@ st.warning('UTC-timestamp')
 graph = st.empty()#create the graph container
 if (len(type_sensor) != 0):
     #the monitoring loop
-    doit = st.button('Do it again!')
-    if doit:
+    #doit = st.button('Do it again!')
+    if sel_sens:
         ax = plt.figure(figsize=(12,5), dpi=150)
         c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':sens_id})
         df = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])

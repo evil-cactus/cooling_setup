@@ -44,6 +44,9 @@ def single_run_readout(start_time, start_date, duration):
 
 # fig, ax = plt.subplots(nrows=len(sens_set),ncols=1, figsize=(8,8), sharex=True)
 
+def logistic(a,b,x):
+    return a/(b + np.exp(-x))
+
 def quick_graph(data, date):
     values,times,sensor = [],[],[]
     for i in range(len(data)):
