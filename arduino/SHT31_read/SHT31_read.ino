@@ -26,7 +26,7 @@ void setup() {
 
   Serial.println("SHT31 test");
   if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr //connected low (gnd)
-//  if (! sht31.begin(0x45)) {   // Set to 0x45 for alternate i2c addr //connected high (VDD)
+  //if (! sht31.begin(0x45)) {   // Set to 0x45 for alternate i2c addr //connected high (VDD)
     Serial.println("Couldn't find SHT31");
     while (1) delay(1);
   }
