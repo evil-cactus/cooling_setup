@@ -1,4 +1,4 @@
-ehen/*************************************************** 
+/*************************************************** 
   This is an example for the SHT31-D Humidity & Temp Sensor
 
   Designed specifically to work with the SHT31-D sensor from Adafruit
