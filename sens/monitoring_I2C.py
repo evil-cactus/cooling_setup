@@ -1,3 +1,7 @@
+#!/usr/bin/python
+
+from cProfile import run
+from turtle import pos, position
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -9,179 +13,252 @@ import matplotlib.dates as mdates
 import sqlite3
 import platform
 import os
+import timeit
+from random import randint
+import matplotlib.patches as mpatches
 
-pltf = platform.system()
+# @st.experimental_singleton
+def get_database_connection(db_path):
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    # c = self.conn.cursor()
+    return conn
 
-if (pltf == 'Linux'):
-    # db_path = 'database/2022.db'
-    db_path = 'database/2022_1.db'
-else:
-    db_path = 'C:\\Users\\schum\\Documents\\github\\cooling_setup\\sens\\database\\2022.db'
-
-
-#small changes to the website itself
-st.set_page_config(
-    page_title='PTSD4MoMi'
-)
-#list_of_colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33']
-list_of_colors=['#e31a1c','#ff7f00','#6a3d9a','#7cd9b4','#b15928','#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99']
-
-#Let's start!
-#st.title('Monitoring-User-Interface for MightyPix Testbench (MUI4MPT)')
-st.title('Python Testbench-Sensor Display for Monitoring MightyPix (PTSD4MoMi)')
-# st.header('...just call it MoMi')
-# st.subheader('by Henry Schumacher')
-st.text('Work in Progress...')
-
-st.subheader('Current database of sensors:')
-#connect to the database and create table sensors, if not there
-conn = sqlite3.connect(db_path)
-c = conn.cursor()
-data = pd.read_sql('SELECT * FROM sensors ORDER BY sens_id ASC', conn)
-st.dataframe(data)
-if (len(data) != 0):
-    # print(data.iloc[-1:])
-    last_id = data.iloc[-1:]
-    last_id = int(last_id.values.tolist()[0][0])
-else:
-    last_id = 0
-c.close()
-
-## select your sensors
-sensor_type = st.multiselect(
-        'What kind of sensor are you adding?',
-        ('Temperature', 'Humidity', 'Voltage', 'Current')
+def page_config(conn):
+    st.set_page_config(
+        page_title='PTSD4MoMi'
     )
+    st.title('Online Monitoring')
+    st.subheader('Current database of sensors:')
+    #connect to the database and create table sensors, if not there
+    c = conn.cursor()
+    data = pd.read_sql("""SELECT sens_id ,
+                sens_type ,
+                sens_unit ,
+                sens_des ,
+                sens_name 
+                FROM sensors as s1  
+        WHERE NOT EXISTS(
+            SELECT *
+            FROM sensors AS s2
+            WHERE s2.sens_id = s1.sens_id
+            AND s2.valid_from > s1.valid_from
+        )
+        ORDER BY sens_id ASC""", conn)
+    st.dataframe(data)
+    if (len(data) != 0):
+        last_id = data.iloc[-1:]
+        last_id = int(last_id.values.tolist()[0][0])
+    else:
+        last_id = 0
+    c.close()
+    return(data)
+  
+  
+def sensor_selection(conn, data):
+    sensor_type = st.multiselect(
+            'What kind of sensor are you adding?',
+            ('Temperature/Humidity', 'Voltage/Current'),default=('Temperature/Humidity', 'Voltage/Current')
+        )
+    sens_pos_l = []
+    for j in range(len(sensor_type)):
+        for i in range(len(data)):
+            if data["sens_type"][i] in  sensor_type[j]:
+                sens_pos = data["sens_des"][i]
+                if sens_pos not in sens_pos_l:
+                    sens_pos_l.append(sens_pos)
 
-sens_pos_l = []
-for j in range(len(sensor_type)):
-    for i in range(len(data)):
-        if data["sens_type"][i] == sensor_type[j]:
-            sens_pos = data["sens_des"][i]
-            if sens_pos not in sens_pos_l:
-                sens_pos_l.append(sens_pos)
-
-sens_chos = st.multiselect('Which sensors?', sens_pos_l)
-    
-if sens_chos:
+    sens_chos = st.multiselect('Which sensors?', sens_pos_l,default=sens_pos_l)
     sens_title_l = []
-    for sens_chos_i in range(len(sens_chos)):
-        sens_title = st.text_input(f'How should {sens_chos[sens_chos_i]} be called?', '')
-        sens_title_l.append(sens_title)
-else:
-    st.info("Please choose at least one sensor!!")
+    if sens_chos:
+        sens_title_l = []
+        sens_title_def = {}
+        for sens_chos_i in range(len(sens_chos)):
+            c = conn.cursor()
+            c.execute("""SELECT * FROM sensors as s1  
+                        WHERE NOT EXISTS(
+                            SELECT *
+                            FROM sensors AS s2
+                            WHERE s2.sens_id = s1.sens_id
+                            AND s2.valid_from > s1.valid_from
+                        )
+                        ORDER BY sens_id ASC""")
+            rows = c.fetchall()
+            last_valid=0
+            for row in rows:
+                if sens_chos[sens_chos_i] == row[3]:
+                    sens_title_def[sens_chos[sens_chos_i]] = row[-2]
+                    last_valid=row[-1]
+            sens_title = st.text_input(f'How should {sens_chos[sens_chos_i]} be called?', f'{sens_title_def[sens_chos[sens_chos_i]]}')
+            sens_title_l.append(sens_title) 
+            conn.cursor().execute( "UPDATE sensors SET sens_name = ? where sens_des = ? and valid_from = ?", ( sens_title,sens_chos[sens_chos_i],last_valid))
+            conn.commit()
+            # sens_correct()
+    else:
+        st.info("Please choose at least one sensor!!")
+    
+    meas_time = st.number_input("How long do you want to look back in time (in sec)?",240)
 
-#this Button is just to refresh, whih it only does implicitely lol
-refresh = st.button('refresh')
+    return(sens_chos, meas_time, sens_title_l, sensor_type)
 
-#matplotlib shut up!
-plt.rcParams.update({'figure.max_open_warning': 0})
 
-#reconnecting for monitoring
-conn = sqlite3.connect(db_path)
-c = conn.cursor()
-#setup of sensor things
-c.execute("SELECT * FROM sensors ORDER BY sens_id ASC")
-list_sensor = c.fetchall()
-df_list_sensor = pd.DataFrame(list_sensor, columns=['sens_id','sens_type','sens_unit','sens_des'])
-# print(df_list_sensor)
-print(list_sensor)
-numb_sensor = len(list_sensor)
 
 #creating a unique list of sensor types for later use
-c.execute("SELECT * FROM sensors")
-lst = c.fetchall()
-# print("list", lst, "sene",sens_chos)
-type_sensor,names = [],[]
-for sens_chos_i in range(len(sens_chos)):
-    for i in range(len(lst)):
-        if lst[i][-1] == sens_chos[sens_chos_i]:
-            print( lst[i][-1])
-            type_sensor.append(lst[i][1])
-            names.append([lst[i][0],lst[i][3]])
-type_sensor = list(set(type_sensor))
-type_sensor_ids = []
-for type in type_sensor:
-    c.execute("SELECT * FROM sensors")
+# @st.cache
+def sens_correct(conn, sens_chos, sens_title_l):
+    c = conn.cursor()
+    c.execute("""SELECT 
+                sens_id ,
+                sens_type ,
+                sens_unit ,
+                sens_des ,
+                sens_name 
+                FROM sensors as s1  
+                WHERE NOT EXISTS(
+                    SELECT *
+                    FROM sensors AS s2
+                    WHERE s2.sens_id = s1.sens_id
+                    AND s2.valid_from > s1.valid_from
+                )
+                ORDER BY sens_id ASC""")  
     lst = c.fetchall()
-    ids,sub,col = [],[],[]
-    ids.append(type)
-    # print(len(lst))
-    for i in range(len(lst)):
-        if (lst[i][1] == type):
-            sub.append(lst[i][0])
-    ids.append(sub)
-    for i in range(len(sub)):
-        if i > len(list_of_colors):
-            i = i%list_of_colors
-        col.append(list_of_colors[i])
-    ids.append(col)
-    type_sensor_ids.append(ids)
-print("ids", type_sensor_ids)
+    corr_sensor = []
+    type_sensor = []
+    for sens_chos_i in range(len(sens_chos)):
+        color = '#%06X' % randint(0, 0xFFFFFF)
+        for i in range(len(lst)):
 
-st.subheader('Graphical Monitoring Interface')
-graph = st.empty()#create the graph container
-if (len(type_sensor) != 0):
-    #the monitoring loop
-    st.sidebar.subheader('Y-axis scaling')
-    nmb_col = st.sidebar.columns(2)
-    diag_1_low = nmb_col[0].number_input('1 lower bound',0.)
-    diag_1_hgh = nmb_col[1].number_input('1 upper bound',1.)
-    diag_2_low = nmb_col[0].number_input('2 lower bound',0.)
-    diag_2_hgh = nmb_col[1].number_input('2 upper bound',1.)
-    diag_3_low = nmb_col[0].number_input('3 lower bound',0.)
-    diag_3_hgh = nmb_col[1].number_input('3 upper bound',1.)
-    diag_4_low = nmb_col[0].number_input('4 lower bound',0.)
-    diag_4_hgh = nmb_col[1].number_input('4 upper bound',1.)
-    scale_change = st.sidebar.button('update y-axis scales')#
-    if (scale_change == True):
-        diagram_yaxis = [(diag_1_low,diag_1_hgh),(diag_2_low,diag_2_hgh),(diag_3_low,diag_3_hgh),(diag_4_low,diag_4_hgh)]
+            if lst[i][-2] == sens_chos[sens_chos_i]: ##check for correct sensor
+                if (lst[i][1]) not in type_sensor:
+                    type_sensor.append((lst[i][1]))    
+                corr_sensor.append((lst[i][1],lst[i][4], lst[i][3],f"{color}"))
+    c.close()
+    return corr_sensor, type_sensor
+
+# @st.cache(allow_output_mutation=True)
+def plots_style(fig, ax, pos, meas_time):
+    now = int(datetime.datetime.now().timestamp())
+    meas_time_unit = "s"
+    if meas_time:
+        ax[pos].set_xticks((now, now-(meas_time/2), now-(meas_time/10), now-meas_time), ('now', f'now-{meas_time/2}{meas_time_unit}',f'now-{meas_time/10}{meas_time_unit}',f'now-{meas_time}{meas_time_unit}'))
+        ax[pos].set_xlim(now-meas_time,now)
     else:
-        diagram_yaxis = [(diag_1_low,diag_1_hgh),(diag_2_low,diag_2_hgh),(diag_3_low,diag_3_hgh),(diag_4_low,diag_4_hgh)]
+        ax[pos].set_xticks((now, now-15, now-30, now-45, now-60, now-90, now-120), ('now', 'now-15s', 'now-30s', 'now-45s', 'now-60s', 'now-90s', 'now-120s'))
+        ax[pos].set_xlim(now-120,now)
+
+    # return(fig, ax)
+
+# @st.cache
+def get_initial_fig(type_sensor,corr_sensor):
+    col = 1
+    row = len(type_sensor)  
+    fig, ax = plt.subplots(row, col, figsize=(12,12))
+    for type in range(len(type_sensor)):
+        for i, sens in enumerate(range(len(corr_sensor))):
+            if type_sensor[type] == corr_sensor[sens][0]:
+                ax[type].grid(which='both',color='black')
+                ax[type].set_facecolor('white')
+                ax[type].set_title(str(type_sensor[type])+'-sensors')
+                ax[type].set_ylabel(str(type_sensor[type]))
+    return fig, ax
+
+def graphical_mon(conn, corr_sensor, type_sensor, meas_time, sens_chos):
+    st.subheader('Graphical Monitoring Interface')
+    graph = st.empty()#create the graph container
+    c = conn.cursor() 
+    legend_label = []
+    color_l = []
+    fig, ax = get_initial_fig(type_sensor, corr_sensor)
     while True:
-        now = int(datetime.datetime.now().timestamp())
-        fig, ax = plt.subplots(nrows=len(type_sensor),ncols=1, figsize=(12,12), sharex=True)
-        for t in range(len(type_sensor)):
-            tx = type_sensor[t]
-            sens,col = [],[]
-            # print(type_sensor_ids)
-            for i in range(len(type_sensor_ids)):
-                if (tx == type_sensor_ids[i][0]):
-                    sens = type_sensor_ids[i][1]
-                    # print("sensids",type_sensor_ids)
-                    col = type_sensor_ids[i][2]
-                    # print("hier", sens, col)
-            # print(len(sens))
-            for j in range(0,len(sens)):
-                for k in range(len(names)):
-                    # print("go", sens, sens[j], names[k])
-                    if (int(names[k][0]) == sens[j]):
-                        sens_name = names[k][1]
-                        c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':sens[j]})
-                        df = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
-                        ax[t].plot(df['time'],df['value'], color=col[j], lw=0.8)
-                        ax[t].scatter(df['time'], df['value'], color=col[j], lw=1.2,label=str(sens_name))
-        for n in range(0,len(type_sensor)):
-            #for label in ax[n].get_xticklabels(which='major'):
-            #    label.set(rotation=30, horizontalalignment='right')
-            ax[n].grid(which='both',color='black')
-            ax[n].axvline(x=now)
-            ax[n].set_facecolor('white')
-            ax[n].set_title(str(type_sensor[n])+'-sensors')
-            #ax[n].set_ylabel(str(type_sensor[n])+'-sensors')
-            # ax[n].set_ylim(diagram_yaxis[n])
-            if sens_title and len(sens_title_l) > 0:
-                ax[n].legend(loc='upper left', labels = sens_title_l)
-            else:
-                ax[n].legend(loc='upper left')
-        plt.xticks((now, now-15, now-30, now-45, now-60, now-90, now-120), ('now', 'now-15s', 'now-30s', 'now-45s', 'now-60s', 'now-90s', 'now-120s'))
-        # plt.xticks((now+1000, now-100000), ('now', 'now-1000s'))
-        plt.xlim(now-120,now+10)
-        plt.tight_layout()
-        
-        # plt.show()
-        graph.pyplot(fig)
-        time.sleep(0.2)
-        plt.close()
-else:
-    st.warning('You\'re missing sensors to be shown here. Maybe add some above.')
+        for type in range(len(type_sensor)):
+            ref_time=datetime.datetime.now()-datetime.timedelta(seconds=meas_time)
+            plots_style(fig, ax , type , meas_time)
+            for i, sens in enumerate(range(len(corr_sensor))):
+                if type_sensor[type] == corr_sensor[sens][0]:
+                    sens_name = corr_sensor[sens][1]
+                    sens_title = corr_sensor[sens][-3]
+                    # print("timestamp: ",datetime.datetime.timestamp(ref_time))
+                    # print("datetime: ",ref_time)
+                    c.execute('SELECT time,value FROM measurement WHERE sensor_id=:id and time >:ref_time ORDER BY time ASC',{'id':i,'ref_time':datetime.datetime.timestamp(ref_time)})
+                    # c.execute('SELECT time,value FROM measurement WHERE sensor_id=:id and time >:ref_time ORDER BY time ASC',{'id':i,'ref_time':ref_time})
+                    # c.execute('SELECT time,value FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':i})
+                    #c.execute('SELECT value FROM measurement where sensor_id=:id ORDER by time ASC', {'id':i})
+                    #print(c)
+                    # print(c.fetchall())
+                    df = pd.DataFrame(c.fetchall(),columns=['time','value'])
+                    #df = pd.DataFrame(c.fetchall(), columns = ['value'])
+                    # print(i,sens,sens_name)
+                    print(corr_sensor[sens])
+
+                    ax[type].plot(df['time'],df['value'], color=corr_sensor[sens][-1], lw=0.8)                    
+                    ax[type].scatter(df['time'], df['value'], color=corr_sensor[sens][-1], lw=1.2,label=str(sens_title))
+                    #print(df['value'])
+                    patch = mpatches.Patch(color = corr_sensor[sens][-1], label = str(sens_title))
+                    if sens_title not in legend_label:
+                        #print(corr_sensor[sens][-1])
+                        legend_label.append(sens_title)  
+                        color_l.append(patch)
+    
+            fig.legend(handles = color_l)
+            # plt.tight_layout()
+            graph.pyplot(fig)
+            time.sleep(0.1)
+            plt.close()
+    
+    
+
+def IV_scan(conn, corr_sensor, type_sensor, meas_time, sens_type):
+    # print("test")
+    # graph2 = st.empty()#create the graph container
+    c = conn.cursor()
+    fig, ax  = plt.subplots(1,1, figsize =(12,12))
+    now = int(datetime.datetime.now().timestamp())
+    # meas_time_unit = "s"
+    # ax.set_xticks((now, now-(meas_time/2), now-(meas_time/10), now-meas_time), ('now', f'now-{meas_time/2}{meas_time_unit}',f'now-{meas_time/10}{meas_time_unit}',f'now-{meas_time}{meas_time_unit}'))
+    # ax.set_xlim(now-meas_time,now)
+    voltage, current = [], []
+    if "Voltage/Current" in sens_type:
+        IV_sens = [sens for sens in corr_sensor if sens[0] == "Voltage" or sens[0]== "Current"]
+        while True:
+            for IV_sens_i in IV_sens:
+                ref_time=datetime.datetime.now()-datetime.timedelta(seconds=meas_time)
+                c.execute('SELECT * FROM sensors WHERE sens_type =?', (IV_sens_i[0],))
+                rows = c.fetchall()
+                for row in rows:
+                    # c.execute('SELECT * FROM measurement WHERE sensor_id=:id and time >:ref_time ORDER BY time ASC',{'id':row[0],'ref_time':datetime.datetime.timestamp(ref_time)})
+                    c.execute('SELECT * FROM measurement WHERE sensor_id=:id ORDER BY time ASC',{'id':row[0]})
+                    print(row[1])
+                    if row[1] == "Current":
+                        df_I = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
+                        current = df_I['value'].values.tolist()
+                    elif row[1] == "Voltage":
+                        df_V = pd.DataFrame(c.fetchall(),columns=['time','value','sens_id'])
+                        voltage = df_V['value'].values.tolist()
+                
+                # print(voltage, current)
+                # if (len(current) and len(voltage)) > 0:
+                # print(voltage, current)
+                ax.scatter(voltage, current)
+                ax.legend()
+                # # plt.show()
+                # plt.tight_layout()
+                st.pyplot(fig)
+                # time.sleep(0.2)
+                    # plt.close()
+
+def main():
+    connection = get_database_connection("database/2022_Desy_debug2.db")
+    data = page_config(connection)
+    sens_chos, meas_time, sens_title_l, sens_type = sensor_selection(connection, data)
+    corr_sens, type_sens = sens_correct(connection, sens_chos, sens_title_l)
+    # IV_scan(connection, corr_sens, type_sens, meas_time, sens_type)
+    graphical_mon(connection, corr_sens, type_sens, meas_time, sens_chos)
+
+    # if "Voltage/Current" in sens_chos:
+    #     IV_scan(connection, corr_sens, type_sens, meas_time)
+   
+
+    #matplotlib shut up!
+    plt.rcParams.update({'figure.max_open_warning': 0})
+
+if __name__ == "__main__":
+    main()
