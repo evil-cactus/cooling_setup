@@ -12,7 +12,7 @@ import serial.tools.list_ports
 import logging
 import pyvisa
 import platform
-from keithley2400 import Keithley2400
+#from keithley2400 import Keithley2400
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
